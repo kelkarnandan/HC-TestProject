@@ -1,0 +1,39 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: AzureKeyVault@2
+  inputs:
+    azureSubscription: 'HC-DevOps-VSTS(7fe14143-63c1-4bae-a608-561826210954)'
+    KeyVaultName: 'ADOTestProjectCodeQL'
+    SecretsFilter: 'ghtoken'
+    RunAsPreJob: true
+
+- script: |
+    wget https://github.com/github/codeql-action/releases/latest/download/codeql-runner-linux
+    chmod +x codeql-runner-linux
+  displayName: 'Get latest CodeQL package. Install on Agent.'
+
+- script: |
+    ./codeql-runner-linux init \
+    --repository nuance-internal/TestProject \
+    --github-url https://github.com \
+    --github-auth $(ghtoken) \
+  displayName: 'Initialize CodeQL Executable and creae a CodeQL database'
+
+- script: |
+    ./codeql-runner-linux analyze \
+    --repository nuance-internal/TestProject \
+    --github-url https://github.com \
+    --github-auth $(ghtoken) \
+    --commit $(Build.SourceVersion) \
+    --ref $(Build.SourceBranch)
+  displayName: 'Populate the CodeQL runner database, analyze them, and upload the results to GitHub.'
